@@ -1,4 +1,4 @@
-# afxdp-l2fwd
+# afxdp-userapp
 
 Minimal AF_XDP-based userspace datapath.
 
