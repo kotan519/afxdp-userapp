@@ -24,7 +24,7 @@ int afxdp_umem_create(struct afxdp_umem *u,
                       uint32_t frame_size,
                       uint32_t num_frames,
                       struct xsk_ring_prod *fill,
-                      struct xsk_ring_cons *comp)
+                      struct xsk_ring_cons *cq)
 {
     int ret;
     memset(u, 0, sizeof(*u));
@@ -72,7 +72,7 @@ int afxdp_umem_create(struct afxdp_umem *u,
     };
 
     ret = xsk_umem__create(&u->umem, u->area, u->area_size,
-                           fill, comp, &cfg);
+                           fill, cq, &cfg);
     if (ret)
         return ret;
 

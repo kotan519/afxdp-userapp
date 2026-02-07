@@ -1,5 +1,6 @@
 CC      := clang
 CFLAGS  := -O2 -g -Wall -Wextra
+CFLAGS += -Iinclude
 CFLAGS  += $(shell pkg-config --cflags libbpf)
 LDFLAGS := $(shell pkg-config --libs libbpf)
 
@@ -9,7 +10,8 @@ SRCS := \
   src/rx.c \
   src/tx.c \
   src/stats.c \
-  src/util.c
+  src/util.c \
+  src/config.c
 
 OBJS := $(SRCS:.c=.o)
 

@@ -14,6 +14,7 @@
 #include <bpf/xsk.h>
 
 #include "afxdp.h"
+#include "afxdp_config.h"
 
 static volatile int running = 1;
 
@@ -32,13 +33,7 @@ static void die(const char *msg)
 int main(int argc, char **argv)
 {
     // 設定
-    struct afxdp_cfg cfg = {
-        .ifname = "enp4s0f1",
-        .queue_id = 0,
-        .batch_size = AFXDP_BATCH_SIZE,
-        .use_need_wakeup = true,
-        .poll_timeout_ms = 1000,
-    };
+    struct afxdp_cfg cfg = afxdp_cfg_default();
 
     struct afxdp_port port;
     memset(&port, 0, sizeof(port));
@@ -52,7 +47,7 @@ int main(int argc, char **argv)
 
     // UMEM作成
     if (afxdp_umem_create(&port.umem, AFXDP_FRAME_SIZE, AFXDP_NUM_FRAMES,
-                          &port.fill, &port.comp))
+                          &port.fill, &port.cq))
         die("afxdp_umem_create");
 
     // fillリングにfreeを詰める
@@ -66,20 +61,17 @@ int main(int argc, char **argv)
             .tx_size = AFXDP_NUM_FRAMES,
             .libbpf_flags = 0,
             .xdp_flags = XDP_FLAGS_DRV_MODE,
-            .bind_flags = XDP_ZEROCOPY |
-                          (cfg.use_need_wakeup ? XDP_USE_NEED_WAKEUP : 0),
+            .bind_flags = XDP_ZEROCOPY,
         };
 
-        if (xsk_socket__create(&port.xsk,
-                               cfg.ifname,
-                               cfg.queue_id,
-                               port.umem.umem,
-                               &port.rx,
-                               &port.tx,
-                               &xcfg))
+        if(cfg.use_need_wakeup)
+            xcfg.bind_flags |= XDP_USE_NEED_WAKEUP;
+
+        if (xsk_socket__create(&port.xsk, cfg.ifname, cfg.queue_id,
+                               port.umem.umem, &port.rx, &port.tx, &xcfg))
             die("xsk_socket__create");
 
-        port.need_wakeup_tx = xsk_ring_prod__needs_wakeup(&port.tx);
+        port.use_need_wakeup = cfg.use_need_wakeup;
     }
 
     // xskmapにsocket登録
@@ -95,31 +87,57 @@ int main(int argc, char **argv)
 
     // メインループ
     while (running) {
+        // Completionリングを回収しfreeへ
+        afxdp_cq_drain(&port, cfg.batch_size);
+
         // fillリングに補充
         afxdp_fill_refill(&port, AFXDP_FILL_WM);
 
         // RX peek
         int n = afxdp_rx_peek(&port, cfg.batch_size);
-        if (n > 0) {
-            // statsカウント
-            for (int i = 0; i < n; i++) {
-                struct xdp_desc *d = afxdp_rx_desc(&port, i);
-                port.stats.rx_pkts++;
-                port.stats.rx_bytes += d->len;
-            }
+        if (n <= 0) {
+            // polling
+            poll(&pfd, 1, cfg.poll_timeout_ms);
+            continue;
+        }
+
+        // TXリングに格納
+        uint32_t tx_idx;
+        int tn = xsk_ring_prod__reserve(&port.tx, (uint32_t)n, &tx_idx);
+        if (tn != n) {
+            afxdp_tx_kick(&port);
             afxdp_rx_release(&port, n);
             continue;
         }
 
-        // polling
-        poll(&pfd, 1, cfg.poll_timeout_ms);
+        for (int i = 0; i < n; i++) {
+            struct xdp_desc *rd = afxdp_rx_desc(&port, i);
+
+            port.stats.rx_pkts++;
+            port.stats.rx_bytes += rd->len;
+
+            // RX→TX（descコピー）
+            struct xdp_desc *td = xsk_ring_prod__tx_desc(&port.tx, tx_idx + (uint32_t)i);
+            td->addr = rd->addr;
+            td->len  = rd->len;
+        }
+
+        xsk_ring_prod__submit(&port.tx, (uint32_t)n);
+        port.stats.tx_pkts += (uint64_t)n;
+
+        // RX再利用
+        afxdp_rx_release(&port, n);
+
+        // TX kick
+        afxdp_tx_kick(&port);
     }
 
-    printf("\n--- stats ---\n");
-    printf("rx_pkts=%lu rx_bytes=%lu fill=%lu\n",
-           port.stats.rx_pkts,
-           port.stats.rx_bytes,
-           port.stats.fill_pkts);
+    printf("\nrx_pkts=%lu rx_bytes=%lu tx_pkts=%lu comp=%lu fill=%lu\n",
+       port.stats.rx_pkts,
+       port.stats.rx_bytes,
+       port.stats.tx_pkts,
+       port.stats.cq_pkts,
+       port.stats.fill_pkts);
 
     afxdp_port_destroy(&port);
     return 0;

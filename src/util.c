@@ -24,6 +24,15 @@ bool afxdp_free_pop(struct afxdp_umem *u, uint64_t *addr)
     return true;
 }
 
+bool afxdp_free_push(struct afxdp_umem *u, uint64_t addr)
+{
+    if (u->free_cnt >= u->free_cap)
+        return false;
+
+    u->free_addrs[u->free_cnt++] = addr;
+    return true;
+}
+
 // UMEM offset→ポインタ
 void *afxdp_umem_ptr(struct afxdp_umem *u, uint64_t addr)
 {
