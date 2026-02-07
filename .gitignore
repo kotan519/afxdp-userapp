@@ -1,0 +1,18 @@
+# build artifacts
+*.o
+*.a
+*.so
+*.skel.h
+build/
+.tmp/
+
+# bpf / llvm
+*.ll
+*.bc
+
+# editor
+.vscode/
+.idea/
+
+# runtime
+*.log
