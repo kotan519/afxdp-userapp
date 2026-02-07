@@ -1,5 +1,10 @@
 # afxdp-userapp
-AF_XDPのユーザ空間アプリケーションを作成
+AF_XDPを用いたユーザ空間ネットワークアプリケーションです．
+RX/TX/Fill/Completion Queue/need_wakeupをユーザ空間で直接扱う最小構成のdatapathを実装しています．
+
+## 概要
+本アプリケーションは、XDPによりNICからユーザ空間へパケットをリダイレクトし，AF_XDPのZero-Copy機構を用いてRX→TX転送を行います。  
+TX完了後はCompletion Queueを回収し、UMEMフレームを再利用することで、ゼロコピーなデータパスを維持します．
 
 ## ビルド & 実行
 ```bash
