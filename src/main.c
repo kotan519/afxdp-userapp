@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <poll.h>
+#include <time.h>
 
 #include <linux/if_link.h>
 #include <bpf/bpf.h>
@@ -30,14 +31,26 @@ static void die(const char *msg)
     exit(1);
 }
 
+static void print_stats_periodic(struct afxdp_port *p)
+{
+    printf("[stats] rx=%lu rx_bytes=%lu tx=%lu cq=%lu fill=%lu\n",
+           p->stats.rx_pkts,
+           p->stats.rx_bytes,
+           p->stats.tx_pkts,
+           p->stats.cq_pkts,
+           p->stats.fill_pkts);
+    fflush(stdout);
+}
+
 int main(int argc, char **argv)
 {
     // 設定
     struct afxdp_cfg cfg = afxdp_cfg_default();
-
+    struct timespec last_ts;
+    clock_gettime(CLOCK_MONOTONIC, &last_ts);
     struct afxdp_port port;
-    memset(&port, 0, sizeof(port));
 
+    memset(&port, 0, sizeof(port));
     signal(SIGINT, on_sigint);
 
     // XSKMAP取得
@@ -134,14 +147,19 @@ int main(int argc, char **argv)
 
         // TX kick
         afxdp_tx_kick(&port);
-    }
 
-    printf("\nrx_pkts=%lu rx_bytes=%lu tx_pkts=%lu comp=%lu fill=%lu\n",
-       port.stats.rx_pkts,
-       port.stats.rx_bytes,
-       port.stats.tx_pkts,
-       port.stats.cq_pkts,
-       port.stats.fill_pkts);
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+
+        long diff_ms =
+            (now.tv_sec - last_ts.tv_sec) * 1000 +
+            (now.tv_nsec - last_ts.tv_nsec) / 1000000;
+
+        if (diff_ms >= 2000) {
+            print_stats_periodic(&port);
+            last_ts = now;
+        }
+    }
 
     afxdp_port_destroy(&port);
     return 0;
