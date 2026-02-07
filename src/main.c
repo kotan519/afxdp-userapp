@@ -112,6 +112,10 @@ int main(int argc, char **argv)
 
         for (int i = 0; i < n; i++) {
             struct xdp_desc *rd = afxdp_rx_desc(&port, i);
+            void *data = afxdp_rx_data(&port, rd);
+
+            // ICMP書き換え
+            try_icmp_reply(data, rd->len);
 
             port.stats.rx_pkts++;
             port.stats.rx_bytes += rd->len;

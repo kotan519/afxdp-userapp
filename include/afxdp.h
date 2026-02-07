@@ -5,6 +5,8 @@
 #include <stddef.h>
 
 #include <linux/if_xdp.h>
+#include <linux/if_ether.h>
+
 #include <bpf/xsk.h>
 
 #define AFXDP_FRAME_SIZE 2048u
@@ -76,3 +78,4 @@ bool afxdp_free_pop(struct afxdp_umem *u, uint64_t *addr);
 bool afxdp_free_push(struct afxdp_umem *u, uint64_t addr);
 void *afxdp_umem_ptr(struct afxdp_umem *u, uint64_t addr);
 void afxdp_port_destroy(struct afxdp_port *p);
+void try_icmp_reply(void *data, uint32_t len);
