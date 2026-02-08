@@ -16,7 +16,7 @@ int afxdp_rx_peek(struct afxdp_port *p, uint32_t max)
 }
 
 // peekしたaddrのdescを返す
-struct xdp_desc *afxdp_rx_desc(struct afxdp_port *p, uint32_t i)
+const struct xdp_desc *afxdp_rx_desc(struct afxdp_port *p, uint32_t i)
 {
     return xsk_ring_cons__rx_desc(&p->rx, p->rx_idx + i);
 }
@@ -27,7 +27,7 @@ void *afxdp_rx_data(struct afxdp_port *p, const struct xdp_desc *d)
     return afxdp_umem_ptr(&p->umem, d->addr);
 }
 
-// 再利用
+// RXリング消費（cons）
 void afxdp_rx_release(struct afxdp_port *p, uint32_t n)
 {
     xsk_ring_cons__release(&p->rx, n);

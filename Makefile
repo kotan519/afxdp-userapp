@@ -9,7 +9,6 @@ SRCS := \
   src/umem.c \
   src/rx.c \
   src/tx.c \
-  src/stats.c \
   src/util.c \
   src/config.c
 

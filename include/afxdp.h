@@ -54,7 +54,7 @@ struct afxdp_port {
 
 // RX
 int afxdp_rx_peek(struct afxdp_port *p, uint32_t max);
-struct xdp_desc *afxdp_rx_desc(struct afxdp_port *p, uint32_t i);
+const struct xdp_desc *afxdp_rx_desc(struct afxdp_port *p, uint32_t i);
 void *afxdp_rx_data(struct afxdp_port *p, const struct xdp_desc *d);
 void afxdp_rx_release(struct afxdp_port *p, uint32_t n);
 
@@ -70,7 +70,7 @@ int afxdp_umem_create(struct afxdp_umem *u, uint32_t frame_size, uint32_t num_fr
                         struct xsk_ring_prod *fill, struct xsk_ring_cons *cq);
 void afxdp_umem_destroy(struct afxdp_umem *u);
 int afxdp_fill_prepare_all(struct afxdp_port *p);
-int afxdp_fill_refill(struct afxdp_port *p, uint32_t watermark);
+int afxdp_fill_refill(struct afxdp_port *p);
 
 // util
 int afxdp_xskmap_register(int map_fd, struct afxdp_port *p, uint32_t queue_id);

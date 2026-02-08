@@ -42,7 +42,7 @@ static void print_stats_periodic(struct afxdp_port *p)
     fflush(stdout);
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
     // 設定
     struct afxdp_cfg cfg = afxdp_cfg_default();
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
         afxdp_cq_drain(&port, cfg.batch_size);
 
         // fillリングに補充
-        afxdp_fill_refill(&port, AFXDP_FILL_WM);
+        afxdp_fill_refill(&port);
 
         // RX peek
         int n = afxdp_rx_peek(&port, cfg.batch_size);
@@ -114,17 +114,16 @@ int main(int argc, char **argv)
             continue;
         }
 
-        // TXリングに格納
+        // TXリング予約
         uint32_t tx_idx;
         int tn = xsk_ring_prod__reserve(&port.tx, (uint32_t)n, &tx_idx);
         if (tn != n) {
-            afxdp_tx_kick(&port);
             afxdp_rx_release(&port, n);
             continue;
         }
 
         for (int i = 0; i < n; i++) {
-            struct xdp_desc *rd = afxdp_rx_desc(&port, i);
+            const struct xdp_desc *rd = afxdp_rx_desc(&port, i);
             void *data = afxdp_rx_data(&port, rd);
 
             // ICMP書き換え
@@ -142,7 +141,7 @@ int main(int argc, char **argv)
         xsk_ring_prod__submit(&port.tx, (uint32_t)n);
         port.stats.tx_pkts += (uint64_t)n;
 
-        // RX再利用
+        // RX消費
         afxdp_rx_release(&port, n);
 
         // TX kick

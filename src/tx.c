@@ -14,6 +14,7 @@ int afxdp_tx_reserve(struct afxdp_port *p, uint32_t n, uint32_t *idx_out)
     return r;
 }
 
+/*
 // TXリングに書き込み
 static inline void afxdp_tx_write(struct afxdp_port *p, uint32_t idx,
                                   uint64_t addr, uint32_t len)
@@ -22,6 +23,7 @@ static inline void afxdp_tx_write(struct afxdp_port *p, uint32_t idx,
     d->addr = addr;
     d->len  = len;
 }
+*/
 
 // TXのprodを公開
 void afxdp_tx_submit(struct afxdp_port *p, uint32_t n)

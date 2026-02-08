@@ -13,12 +13,6 @@
 
 struct afxdp_port port = {0};
 
-static void die(const char *msg)
-{
-    perror(msg);
-    exit(1);
-}
-
 // UMEM作成（/dev/shm上）
 int afxdp_umem_create(struct afxdp_umem *u,
                       uint32_t frame_size,
@@ -140,7 +134,7 @@ int afxdp_fill_prepare_all(struct afxdp_port *p)
 }
 
 // fillリングに使用済みフレームを格納
-int afxdp_fill_refill(struct afxdp_port *p, uint32_t watermark)
+int afxdp_fill_refill(struct afxdp_port *p)
 {
     struct afxdp_umem *u = &p->umem;
 
